@@ -105,7 +105,7 @@ public:
 
   MatrixXd GenerateSigmaPoints();
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
-  void PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd* x_out, MatrixXd* P_out);
+  void PredictMeanAndCovariance(MatrixXd Xsig_pred);
 };
 
 #endif /* UKF_H */

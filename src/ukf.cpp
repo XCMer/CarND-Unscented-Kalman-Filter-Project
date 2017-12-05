@@ -92,6 +92,9 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+  MatrixXd Xsig_aug = GenerateSigmaPoints();
+  Xsig_pred_ = SigmaPointPrediction(Xsig_aug, delta_t);
+  PredictMeanAndCovariance(Xsig_pred_);
 }
 
 /**
@@ -197,7 +200,8 @@ MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
 }
 
 
-void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd *x_out, MatrixXd *P_out) {
+void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
+  // Calculate weights
   double weight_0 = lambda_ / (lambda_ + n_aug_);
   weights_(0) = weight_0;
   for (int i = 1; i < 2 * n_aug_ + 1; i++) {  //2n+1 weights
@@ -205,19 +209,18 @@ void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd *x_out, MatrixXd
     weights_(i) = weight;
   }
 
-  // Predicted state mean
-  x_.fill(0.0);
+  // Predicted state mean from weights and predicted sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
     x_ = x_ + weights_(i) * Xsig_pred.col(i);
   }
 
   // Predicted state covariance matrix
-  P_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
 
-    // state difference
+    // State difference
     VectorXd x_diff = Xsig_pred.col(i) - x_;
-    //angle normalization
+
+    // Angle normalization
     while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
     while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
