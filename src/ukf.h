@@ -109,7 +109,7 @@ public:
   MatrixXd GenerateSigmaPoints();
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
   void PredictMeanAndCovariance(MatrixXd Xsig_pred);
-  MatrixXd SigmaPointsToRadarMeasurement(MatrixXd Xsig);
+  MatrixXd SigmaPointsToRadarMeasurement();
 };
 
 #endif /* UKF_H */
