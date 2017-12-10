@@ -67,6 +67,9 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  //* No of measurements in Radar
+  int n_radar_ = 3;
+
 
   /**
    * Constructor
@@ -106,6 +109,7 @@ public:
   MatrixXd GenerateSigmaPoints();
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
   void PredictMeanAndCovariance(MatrixXd Xsig_pred);
+  MatrixXd SigmaPointsToRadarMeasurement(MatrixXd Xsig);
 };
 
 #endif /* UKF_H */

@@ -92,8 +92,15 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+
+  // First, we generate the sigma points from the current state
   MatrixXd Xsig_aug = GenerateSigmaPoints();
+
+  // Then, we get the predicted sigma points
   Xsig_pred_ = SigmaPointPrediction(Xsig_aug, delta_t);
+
+  // Finally, we update the state mean and covariance with the prediction
+  // convert from sigma points back to state variable form
   PredictMeanAndCovariance(Xsig_pred_);
 }
 
@@ -125,8 +132,37 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
+
+  // Calculate cross correlation matrix (Tc)
+  VectorXd z = meas_package.raw_measurements_;
+  MatrixXd Tc = MatrixXd(n_x_, n_radar_);
+
+  // Get predicted value for Z
+
+  // For 2n+1 sigma points
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    // Residual
+    VectorXd z_diff = Xsig_aug_.col(i) - z_pred;
+
+    // Angle normalization
+    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+    // State difference
+    VectorXd x_diff = Xsig_pred.col(i) - x;
+
+    // Angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    Tc = Tc + weights(i) * x_diff * z_diff.transpose();
+  }
 }
 
+/**
+ * Generates sigma points for the state
+ * @return Sigma point matrix
+ */
 MatrixXd UKF::GenerateSigmaPoints() {
   // Sigma-point matrix
   MatrixXd Xsig = MatrixXd(n_aug_, 2 * n_aug_ + 1);
@@ -147,6 +183,14 @@ MatrixXd UKF::GenerateSigmaPoints() {
   return Xsig;
 }
 
+
+/**
+ * Given sigma points and the time delta, gives us
+ * the predicted sigma points for the current time.
+ * @param Xsig_aug Sigma points from the last state
+ * @param delta_t Time elapsed since the last measurement
+ * @return Predicted sigma point matrix
+ */
 MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
   MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
@@ -200,6 +244,11 @@ MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
 }
 
 
+/**
+ * Updates the state and its covariance given the predicted sigma points
+ *
+ * @param Xsig_pred The predicted sigma points at the current time
+ */
 void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
   // Calculate weights
   double weight_0 = lambda_ / (lambda_ + n_aug_);
@@ -225,5 +274,29 @@ void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
     while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
     P_ = P_ + weights_(i) * x_diff * x_diff.transpose();
+  }
+}
+
+
+MatrixXd UKF::SigmaPointsToRadarMeasurement(MatrixXd Xsig) {
+  MatrixXd Zsig = MatrixXd(n_radar_, 2 * n_aug_ + 1);
+
+  // 2n+1 simga points
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    // Extract values
+    double p_x = Xsig(0, i);
+    double p_y = Xsig_pred(1, i);
+    double v = Xsig_pred(2, i);
+    double yaw = Xsig_pred(3, i);
+
+    double v1 = cos(yaw) * v;
+    double v2 = sin(yaw) * v;
+
+    // Measurement model
+    Zsig(0, i) = sqrt(p_x * p_x + p_y * p_y); // r
+    Zsig(1, i) = atan2(p_y, p_x); // phi
+    Zsig(2, i) = (p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y); // r_dot
+
+    return Zsig;
   }
 }
