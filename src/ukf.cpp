@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = false;
+  use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -21,10 +21,13 @@ UKF::UKF() {
   // initial state vector
   n_x_ = 5;
   n_aug_ = n_x_ + 2;
-  x_ = VectorXd(n_aug_);
+
+  x_ = VectorXd(n_x_);
+  x_.fill(0.0);
 
   // initial covariance matrix
-  P_ = MatrixXd(n_aug_, n_aug_);
+  P_ = MatrixXd(n_x_, n_x_);
+  P_.fill(0.0);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -61,6 +64,9 @@ UKF::UKF() {
 
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
   Xsig_pred_.fill(0);
+
+  weights_ = VectorXd(2 * n_aug_ + 1);
+  weights_.fill(0);
 }
 
 UKF::~UKF() {}
@@ -76,6 +82,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+  Prediction(meas_package.timestamp_);
   if (meas_package.sensor_type_ == meas_package.LASER) {
     UpdateLidar(meas_package);
   } else {
@@ -209,20 +216,31 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
  * @return Sigma point matrix
  */
 MatrixXd UKF::GenerateSigmaPoints() {
+  // Augmentation
+  VectorXd x_aug = VectorXd(n_aug_);
+  x_aug.head(n_x_) = x_;
+  x_aug(n_x_) = 0;
+  x_aug(n_x_ + 1) = 0;
+
+  MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
+  P_aug.topLeftCorner(n_x_, n_x_) = P_;
+  P_aug(n_x_, n_x_) = std_a_ * std_a_;
+  P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd_ * std_yawdd_;
+
   // Sigma-point matrix
   MatrixXd Xsig = MatrixXd(n_aug_, 2 * n_aug_ + 1);
 
   // Square root of P
-  MatrixXd A = P_.llt().matrixL();
+  MatrixXd A = P_aug.llt().matrixL();
 
   // First column is the mean, so the same as x
-  Xsig.col(0) = x_;
+  Xsig.col(0) = x_aug;
 
   // Calculate sigma points
   // Every calculation is a column in Xsig
-  for (int i = 0; i < n_x_; i++) {
-    Xsig.col(i + 1) = x_ + sqrt(lambda_ + n_x_) * A.col(i);
-    Xsig.col(n_x_ + i + 1) = x_ - sqrt(lambda_ + n_x_) * A.col(i);
+  for (int i = 0; i < n_aug_; i++) {
+    Xsig.col(i + 1) = x_aug + sqrt(lambda_ + n_aug_) * A.col(i);
+    Xsig.col(n_aug_ + i + 1) = x_aug - sqrt(lambda_ + n_aug_) * A.col(i);
   }
 
   return Xsig;
