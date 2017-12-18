@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = true;
+  use_laser_ = false;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -28,6 +28,9 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(n_x_, n_x_);
   P_.fill(0.0);
+  for (int i = 0; i < n_x_; i++) {
+    P_(i) = 1;
+  }
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 30;
@@ -67,6 +70,8 @@ UKF::UKF() {
 
   weights_ = VectorXd(2 * n_aug_ + 1);
   weights_.fill(0);
+
+  is_initialized_ = false;
 }
 
 UKF::~UKF() {}
@@ -82,11 +87,29 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
-  Prediction(meas_package.timestamp_);
-  if (meas_package.sensor_type_ == meas_package.LASER) {
-    UpdateLidar(meas_package);
+  if (!is_initialized_) {
+    is_initialized_ = true;
+    last_timestamp_ = meas_package.timestamp_;
+
+    if (meas_package.sensor_type_ == meas_package.LASER) {
+//      UpdateLidar(meas_package);
+    } else {
+      UpdateRadar(meas_package);
+    }
   } else {
-    UpdateRadar(meas_package);
+    double delta_t = meas_package.timestamp_ - last_timestamp_;
+    last_timestamp_ = meas_package.timestamp_;
+    Prediction(delta_t);
+
+    if (meas_package.sensor_type_ == meas_package.LASER) {
+      if (use_laser_) {
+        UpdateLidar(meas_package);
+      }
+    } else {
+      if (use_radar_) {
+        UpdateRadar(meas_package);
+      }
+    }
   }
 }
 

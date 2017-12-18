@@ -70,6 +70,9 @@ public:
   //* No of measurements in Radar
   int n_radar_ = 3;
 
+  //* Last timestamp
+  double last_timestamp_;
+
 
   /**
    * Constructor
