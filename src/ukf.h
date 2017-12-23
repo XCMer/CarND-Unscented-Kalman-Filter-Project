@@ -115,6 +115,8 @@ public:
   MatrixXd SigmaPointsToRadarMeasurement();
 
   void TestGenerateSigmaPoints();
+  void TestPredictSigmaPoints();
+  void PredictMeanAndCovariance();
 
   void CompareMatrix(const MatrixXd &a, const MatrixXd &b);
 };
