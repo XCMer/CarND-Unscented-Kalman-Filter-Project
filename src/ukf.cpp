@@ -28,15 +28,15 @@ UKF::UKF() {
 
   // initial covariance matrix
   P_ = MatrixXd::Identity(n_x_, n_x_);
-  P_(2, 2) = 1000;
-  P_(3, 3) = 1000;
-  P_(4, 4) = 1000;
+  P_(2, 2) = 10;
+  P_(3, 3) = 50;
+  P_(4, 4) = 3;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 2;
+  std_a_ = 3;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 2;
+  std_yawdd_ = 10;
 
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -201,10 +201,6 @@ State UKF::UpdateLidar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
-    // Angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
-
     S = S + weights(i) * z_diff * z_diff.transpose();
   }
 
@@ -219,16 +215,8 @@ State UKF::UpdateLidar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
-    // Angle normalization
-    while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
-    while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
-
     // State difference
     VectorXd x_diff = Xsig_pred.col(i) - x;
-
-    // Angle normalization
-    while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
-    while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
     Tc = Tc + weights(i) * x_diff * z_diff.transpose();
   }
@@ -238,10 +226,6 @@ State UKF::UpdateLidar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
   // Residual
   VectorXd z_diff = z - z_pred;
-
-  // Angle normalization
-  while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
-  while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
 
   // Update state mean and covariance matrix
   x = x + K * z_diff;
