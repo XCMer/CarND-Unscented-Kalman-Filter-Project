@@ -112,7 +112,8 @@ public:
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  State UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, MatrixXd Xsig_pred);
+  State UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, MatrixXd Xsig_pred,
+                    VectorXd weights, double std_radr, double std_radphi, double std_radrd);
 
   MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, double std_a, double std_yawdd);
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
