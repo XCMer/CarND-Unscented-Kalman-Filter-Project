@@ -23,20 +23,16 @@ UKF::UKF() {
   n_x_ = 5;
   n_aug_ = n_x_ + 2;
 
-  x_ = VectorXd(n_x_);
-  x_.fill(0.0);
+  x_ = VectorXd::Zero(n_x_);
 
   // initial covariance matrix
   P_ = MatrixXd::Identity(n_x_, n_x_);
-  P_(2, 2) = 10;
-  P_(3, 3) = 50;
-  P_(4, 4) = 3;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 3;
+  std_a_ = 2;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 10;
+  std_yawdd_ = 2;
 
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -252,10 +248,7 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
   You'll also need to calculate the radar NIS.
   */
-
-  // Calculate cross correlation matrix (Tc)
   VectorXd z = meas_package.raw_measurements_;
-  MatrixXd Tc = MatrixXd::Zero(n_x_, n_radar_);
 
   // Get predicted value for Z
   MatrixXd Zsig = SigmaPointsToRadarMeasurement(Xsig_pred);
@@ -265,6 +258,11 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
   VectorXd z_pred = VectorXd::Zero(n_radar_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     z_pred = z_pred + weights(i) * Zsig.col(i);
+  }
+
+  VectorXd x_pred = VectorXd::Zero(n_x_);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    x_pred = x_pred + weights(i) * Xsig_pred.col(i);
   }
 //  cout << "z_pred" << endl;
 //  cout << z_pred << endl;
@@ -293,7 +291,9 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 //  cout << "S+R" << endl;
 //  cout << S << endl;
 
+  // Calculate cross correlation matrix (Tc)
   // For 2n+1 sigma points
+  MatrixXd Tc = MatrixXd::Zero(n_x_, n_radar_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
@@ -303,7 +303,7 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
     while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
 
     // State difference
-    VectorXd x_diff = Xsig_pred.col(i) - x;
+    VectorXd x_diff = Xsig_pred.col(i) - x_pred;
 
     // Angle normalization
     while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
@@ -331,6 +331,8 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
   State state = State();
   state.x = x;
   state.P = P;
+
+  cout << "NIS= " << (z_diff.transpose() * S.inverse() * z_diff) << endl;
 
   return state;
 }
