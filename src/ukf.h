@@ -109,10 +109,14 @@ public:
    */
   void UpdateRadar(MeasurementPackage meas_package);
 
-  MatrixXd GenerateSigmaPoints();
+  MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const double std_a, const double std_yawdd);
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
   void PredictMeanAndCovariance(MatrixXd Xsig_pred);
   MatrixXd SigmaPointsToRadarMeasurement();
+
+  void TestGenerateSigmaPoints();
+
+  void CompareMatrix(const MatrixXd &a, const MatrixXd &b);
 };
 
 #endif /* UKF_H */

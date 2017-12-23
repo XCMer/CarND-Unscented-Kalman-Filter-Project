@@ -33,10 +33,10 @@ UKF::UKF() {
   }
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 1;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 1;
 
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -65,6 +65,9 @@ UKF::UKF() {
   weights_.fill(0);
 
   is_initialized_ = false;
+
+  // Test functions
+  TestGenerateSigmaPoints();
 }
 
 UKF::~UKF() {}
@@ -127,7 +130,7 @@ void UKF::Prediction(double delta_t) {
   */
 
   // First, we generate the sigma points from the current state
-  MatrixXd Xsig_aug = GenerateSigmaPoints();
+  MatrixXd Xsig_aug = GenerateSigmaPoints(x_, P_, std_a_, std_yawdd_);
   cout << "Sigma points" << endl;
   cout << Xsig_aug << endl;
 
@@ -244,18 +247,18 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
  * Generates sigma points for the state
  * @return Sigma point matrix
  */
-MatrixXd UKF::GenerateSigmaPoints() {
+MatrixXd UKF::GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const double std_a, const double std_yawdd) {
   // Augmentation
   VectorXd x_aug = VectorXd(n_aug_);
-  x_aug.head(n_x_) = x_;
+  x_aug.head(n_x_) = x;
   x_aug(n_x_) = 0;
   x_aug(n_x_ + 1) = 0;
 
   MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
   P_aug.fill(0.0);
-  P_aug.topLeftCorner(n_x_, n_x_) = P_;
-  P_aug(n_x_, n_x_) = std_a_ * std_a_;
-  P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd_ * std_yawdd_;
+  P_aug.topLeftCorner(n_x_, n_x_) = P;
+  P_aug(n_x_, n_x_) = std_a * std_a;
+  P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd * std_yawdd;
 
   // Sigma-point matrix
   MatrixXd Xsig = MatrixXd(n_aug_, 2 * n_aug_ + 1);
@@ -393,4 +396,58 @@ MatrixXd UKF::SigmaPointsToRadarMeasurement() {
   }
 
   return Zsig;
+}
+
+void UKF::TestGenerateSigmaPoints() {
+  // Example state
+  VectorXd x = VectorXd(n_x_);
+  x <<   5.7441,
+         1.3800,
+         2.2049,
+         0.5015,
+         0.3528;
+
+  // Example covariance
+  MatrixXd P = MatrixXd(n_x_, n_x_);
+  P <<     0.0043,   -0.0013,    0.0030,   -0.0022,   -0.0020,
+          -0.0013,    0.0077,    0.0011,    0.0071,    0.0060,
+          0.0030,    0.0011,    0.0054,    0.0007,    0.0008,
+          -0.0022,    0.0071,    0.0007,    0.0098,    0.0100,
+          -0.0020,    0.0060,    0.0008,    0.0100,    0.0123;
+
+  MatrixXd Xsig = GenerateSigmaPoints(x, P, 0.2, 0.2);
+
+  cout << "TestGenerateSigmaPoints" << endl;
+  MatrixXd Xsig_expected = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  Xsig_expected
+          << 5.7441, 5.85768, 5.7441, 5.7441, 5.7441, 5.7441, 5.7441, 5.7441, 5.63052, 5.7441, 5.7441, 5.7441, 5.7441, 5.7441, 5.7441,
+          1.38, 1.34566, 1.52806, 1.38, 1.38, 1.38, 1.38, 1.38, 1.41434, 1.23194, 1.38, 1.38, 1.38, 1.38, 1.38,
+          2.2049, 2.28414, 2.24557, 2.29582, 2.2049, 2.2049, 2.2049, 2.2049, 2.12566, 2.16423, 2.11398, 2.2049, 2.2049, 2.2049, 2.2049,
+          0.5015, 0.44339, 0.631886, 0.516923, 0.595227, 0.5015, 0.5015, 0.5015, 0.55961, 0.371114, 0.486077, 0.407773, 0.5015, 0.5015, 0.5015,
+          0.3528, 0.299973, 0.462123, 0.376339, 0.48417, 0.418721, 0.3528, 0.3528, 0.405627, 0.243477, 0.329261, 0.22143, 0.286879, 0.3528, 0.3528,
+          0, 0, 0, 0, 0, 0, 0.34641, 0, 0, 0, 0, 0, 0, -0.34641, 0,
+          0, 0, 0, 0, 0, 0, 0, 0.34641, 0, 0, 0, 0, 0, 0, -0.34641;
+
+  CompareMatrix(Xsig_expected, Xsig);
+}
+
+void UKF::CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted) {
+  cout << "Expected" << endl;
+  cout << expected << endl;
+
+  cout << "Predicted" << endl;
+  cout << predicted << endl;
+
+  for (int i = 0; i < expected.rows(); i++) {
+    for (int j = 0; j < expected.cols(); j++) {
+      double diff = abs(expected(i, j) - predicted(i, j));
+      if (diff >= 0.001) {
+        cout << "Difference found A(" << i << "," << j << ")=" << expected(i, j)
+             << " B(" << i << "," << j << ")=" << predicted(i, j)
+             << " Diff=" << diff << endl;
+
+        assert(diff < 0.001);
+      }
+    }
+  }
 }
