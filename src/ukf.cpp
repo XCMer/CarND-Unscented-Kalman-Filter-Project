@@ -185,16 +185,19 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
   // Calculate cross correlation matrix (Tc)
   VectorXd z = meas_package.raw_measurements_;
   MatrixXd Tc = MatrixXd(n_x_, n_radar_);
-  Tc.fill(0.0);
 
   // Get predicted value for Z
   MatrixXd Zsig = SigmaPointsToRadarMeasurement(std::move(Xsig_pred));
+//  cout << "ZIG" << endl;
+//  cout << Zsig << endl;
 
   VectorXd z_pred = VectorXd(n_radar_);
   z_pred.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     z_pred = z_pred + weights(i) * Zsig.col(i);
   }
+//  cout << "z_pred" << endl;
+//  cout << z_pred << endl;
 
   // Measurement covariance (S)
   MatrixXd S = MatrixXd(n_radar_, n_radar_);
@@ -209,6 +212,8 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
     S = S + weights(i) * z_diff * z_diff.transpose();
   }
+//  cout << "S" << endl;
+//  cout << S << endl;
 
   // Add measurement noise
   MatrixXd R = MatrixXd(n_radar_, n_radar_);
@@ -216,8 +221,11 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
        0, std_radphi * std_radphi, 0,
        0, 0, std_radrd * std_radrd;
   S = S + R;
+//  cout << "S+R" << endl;
+//  cout << S << endl;
 
   // For 2n+1 sigma points
+  Tc.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
@@ -238,6 +246,8 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
   //Kalman gain K;
   MatrixXd K = Tc * S.inverse();
+  cout << "Tc" << endl;
+  cout << Tc << endl;
 
   // Residual
   VectorXd z_diff = z - z_pred;
@@ -591,6 +601,15 @@ void UKF::TestPredictRadar() {
           -0.000937196, 0.00455342, 0.00160333, 0.00652634, 0.00669436,
           -0.00071719, 0.00358884, 0.00171811, 0.00669426, 0.00881797;
 
+  /**
+   * Expected Tc
+   *  0.00468603 -0.000596985   0.00509758
+   *  0.000295054   0.00181452  -0.00356734
+   *  0.00367483  0.000100885   0.00512793
+   * -0.000997283   0.00169207  -0.00571966
+   * -0.000983935   0.00137287  -0.00547673
+   */
+
   // Assertions
   cout << "TestPredictRadar x" << endl;
   CompareVector(x_expected, state.x);
@@ -614,9 +633,7 @@ void UKF::CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted) {
              << " B(" << i << "," << j << ")=" << predicted(i, j)
              << " Diff=" << diff << endl;
 
-        // This assertion is lenient on purpose. We're noting down all differences above
-        // 0.001 but only stopping the program if it goes above 0.01.
-        assert(diff < 0.01);
+        assert(diff < 0.001);
       }
     }
   }
@@ -636,9 +653,7 @@ void UKF::CompareVector(const VectorXd &expected, const VectorXd &predicted) {
            << " B(" << i << ")=" << predicted(i)
            << " Diff=" << diff << endl;
 
-      // This assertion is lenient on purpose. We're noting down all differences above
-      // 0.001 but only stopping the program if it goes above 0.01.
-      assert(diff < 0.01);
+      assert(diff < 0.001);
     }
   }
 }
