@@ -117,7 +117,7 @@ public:
 
   MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, double std_a, double std_yawdd);
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
-  State PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P);
+  State PredictMeanAndCovariance(MatrixXd Xsig_pred);
   MatrixXd SigmaPointsToRadarMeasurement(MatrixXd Xsig_pred);
 
   void TestGenerateSigmaPoints();

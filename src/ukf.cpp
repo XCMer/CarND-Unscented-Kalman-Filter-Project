@@ -30,10 +30,10 @@ UKF::UKF() {
   P_ = MatrixXd::Identity(n_x_, n_x_);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1;
+  std_a_ = 5;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 1;
+  std_yawdd_ = 5;
 
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -148,7 +148,7 @@ void UKF::Prediction(double delta_t) {
 
   // Finally, we update the state mean and covariance with the prediction
   // convert from sigma points back to state variable form
-  State state = PredictMeanAndCovariance(Xsig_pred_, x_, P_);
+  State state = PredictMeanAndCovariance(Xsig_pred_);
   x_ = state.x;
   P_ = state.P;
 }
@@ -366,7 +366,7 @@ MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
  *
  * @param Xsig_pred The predicted sigma points at the current time
  */
-State UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P) {
+State UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
   State state;
 
   // Calculate weights
@@ -376,11 +376,13 @@ State UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P) 
   }
 
   // Predicted state mean from weights and predicted sigma points
+  VectorXd x = VectorXd::Zero(n_x_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
     x = x + weights_(i) * Xsig_pred.col(i);
   }
 
   // Predicted state covariance matrix
+  MatrixXd P = MatrixXd::Zero(n_x_, n_x_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
 
     // State difference
@@ -500,7 +502,7 @@ void UKF::TestPredictMeanAndCovariance() {
   MatrixXd P = MatrixXd(n_x_, n_x_);
   P.fill(0.0);
 
-  State state_pred = PredictMeanAndCovariance(Xsig_pred, x, P);
+  State state_pred = PredictMeanAndCovariance(Xsig_pred);
 
   VectorXd x_expected = VectorXd(n_x_);
   x_expected << 5.93637, 1.49035, 2.20528, 0.536853, 0.353577;
