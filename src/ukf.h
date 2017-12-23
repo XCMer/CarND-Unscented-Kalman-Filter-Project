@@ -10,6 +10,11 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+struct State {
+    VectorXd x;
+    MatrixXd P;
+};
+
 class UKF {
 public:
 
@@ -109,16 +114,17 @@ public:
    */
   void UpdateRadar(MeasurementPackage meas_package);
 
-  MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const double std_a, const double std_yawdd);
+  MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, double std_a, double std_yawdd);
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
-  void PredictMeanAndCovariance(MatrixXd Xsig_pred);
+  State PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P);
   MatrixXd SigmaPointsToRadarMeasurement();
 
   void TestGenerateSigmaPoints();
   void TestPredictSigmaPoints();
-  void PredictMeanAndCovariance();
+  void TestPredictMeanAndCovariance();
 
-  void CompareMatrix(const MatrixXd &a, const MatrixXd &b);
+  void CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted);
+  void CompareVector(const VectorXd &expected, const VectorXd &predicted);
 };
 
 #endif /* UKF_H */

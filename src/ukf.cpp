@@ -69,6 +69,7 @@ UKF::UKF() {
   // Test functions
   TestGenerateSigmaPoints();
   TestPredictSigmaPoints();
+  TestPredictMeanAndCovariance();
 }
 
 UKF::~UKF() {}
@@ -144,7 +145,9 @@ void UKF::Prediction(double delta_t) {
   // convert from sigma points back to state variable form
   cout << x_ << endl;
   cout << P_ << endl;
-  PredictMeanAndCovariance(Xsig_pred_);
+  State state = PredictMeanAndCovariance(Xsig_pred_, x_, P_);
+  x_ = state.x;
+  P_ = state.P;
 }
 
 /**
@@ -348,7 +351,9 @@ MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
  *
  * @param Xsig_pred The predicted sigma points at the current time
  */
-void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
+State UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P) {
+  State state;
+
   // Calculate weights
   weights_(0) = lambda_ / (lambda_ + n_aug_);
   for (int i = 1; i < 2 * n_aug_ + 1; i++) {  //2n+1 weights
@@ -357,22 +362,27 @@ void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
 
   // Predicted state mean from weights and predicted sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
-    x_ = x_ + weights_(i) * Xsig_pred.col(i);
+    x = x + weights_(i) * Xsig_pred.col(i);
   }
 
   // Predicted state covariance matrix
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
 
     // State difference
-    VectorXd x_diff = Xsig_pred.col(i) - x_;
+    VectorXd x_diff = Xsig_pred.col(i) - x;
 
     // Angle normalization
     cout << "ANGLE " << x_diff(3) << endl;
     while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
     while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
-    P_ = P_ + weights_(i) * x_diff * x_diff.transpose();
+    P = P + weights_(i) * x_diff * x_diff.transpose();
   }
+
+  state.x = x;
+  state.P = P;
+
+  return state;
 }
 
 
@@ -460,7 +470,38 @@ void UKF::TestPredictSigmaPoints() {
 }
 
 void UKF::TestPredictMeanAndCovariance() {
+  // Sample predicted sigma points
+  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  Xsig_pred <<
+            5.9374,  6.0640,   5.925,  5.9436,  5.9266,  5.9374,  5.9389,  5.9374,  5.8106,  5.9457,  5.9310,  5.9465,  5.9374,  5.9359,  5.93744,
+          1.48,  1.4436,   1.660,  1.4934,  1.5036,    1.48,  1.4868,    1.48,  1.5271,  1.3104,  1.4787,  1.4674,    1.48,  1.4851,    1.486,
+          2.204,  2.2841,  2.2455,  2.2958,   2.204,   2.204,  2.2395,   2.204,  2.1256,  2.1642,  2.1139,   2.204,   2.204,  2.1702,   2.2049,
+          0.5367, 0.47338, 0.67809, 0.55455, 0.64364, 0.54337,  0.5367, 0.53851, 0.60017, 0.39546, 0.51900, 0.42991, 0.530188,  0.5367, 0.535048,
+          0.352, 0.29997, 0.46212, 0.37633,  0.4841, 0.41872,   0.352, 0.38744, 0.40562, 0.24347, 0.32926,  0.2214, 0.28687,   0.352, 0.318159;
 
+  VectorXd x = VectorXd(n_x_);
+  x.fill(0.0);
+
+  MatrixXd P = MatrixXd(n_x_, n_x_);
+  P.fill(0.0);
+
+  State state_pred = PredictMeanAndCovariance(Xsig_pred, x, P);
+
+  VectorXd x_expected = VectorXd(n_x_);
+  x_expected << 5.93637, 1.49035, 2.20528, 0.536853, 0.353577;
+
+  MatrixXd P_expected = MatrixXd(n_x_, n_x_);
+  P_expected << 0.00543425, -0.0024053, 0.00341576, -0.00348196, -0.00299378,
+          -0.0024053, 0.010845, 0.0014923, 0.00980182, 0.00791091,
+          0.00341576, 0.0014923, 0.00580129, 0.000778632, 0.000792973,
+          -0.00348196, 0.00980182, 0.000778632, 0.0119238, 0.0112491,
+          -0.00299378, 0.00791091, 0.000792973, 0.0112491, 0.0126972;
+
+  cout << "TestPredictMeanAndCovariance x" << endl;
+  CompareVector(x_expected, state_pred.x);
+
+  cout << "TestPredictMeanAndCovariance P" << endl;
+  CompareMatrix(P_expected, state_pred.P);
 }
 
 void UKF::CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted) {
@@ -480,6 +521,25 @@ void UKF::CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted) {
 
         assert(diff < 0.001);
       }
+    }
+  }
+}
+
+void UKF::CompareVector(const VectorXd &expected, const VectorXd &predicted) {
+  cout << "Expected" << endl;
+  cout << expected << endl;
+
+  cout << "Predicted" << endl;
+  cout << predicted << endl;
+
+  for (int i = 0; i < expected.cols(); i++) {
+    double diff = abs(expected(i) - predicted(i));
+    if (diff >= 0.001) {
+      cout << "Difference found A(" << i << ")=" << expected(i)
+           << " B(" << i << ")=" << predicted(i)
+           << " Diff=" << diff << endl;
+
+      assert(diff < 0.001);
     }
   }
 }
