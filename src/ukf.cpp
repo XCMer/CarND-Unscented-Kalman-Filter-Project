@@ -112,14 +112,23 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       last_timestamp_ = meas_package.timestamp_;
 
       Prediction(delta_t);
+      cout << "Predict x: " << endl;
+      cout << x_ << endl;
+
+      cout << "Predict P: " << endl;
+      cout << P_ << endl;
+
       State state = UpdateRadar(meas_package, x_, P_, Xsig_pred_, weights_, std_radr_, std_radphi_, std_radrd_);
       x_ = state.x;
       P_ = state.P;
     }
   }
 
-//  cout << x_ << endl;
-//  cout << P_ << endl;
+  cout << "Update x: " << endl;
+  cout << x_ << endl;
+
+  cout << "Update P: " << endl;
+  cout << P_ << endl;
 }
 
 /**
@@ -137,13 +146,13 @@ void UKF::Prediction(double delta_t) {
 
   // First, we generate the sigma points from the current state
   MatrixXd Xsig_aug = GenerateSigmaPoints(x_, P_, std_a_, std_yawdd_);
-  cout << "Sigma points" << endl;
-  cout << Xsig_aug << endl;
+//  cout << "Sigma points" << endl;
+//  cout << Xsig_aug << endl;
 
   // Then, we get the predicted sigma points
   Xsig_pred_ = SigmaPointPrediction(Xsig_aug, delta_t);
-  cout << "Sigma points prediction" << endl;
-  cout << Xsig_pred_ << endl;
+//  cout << "Sigma points prediction" << endl;
+//  cout << Xsig_pred_ << endl;
 
   // Finally, we update the state mean and covariance with the prediction
   // convert from sigma points back to state variable form
@@ -187,7 +196,7 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
   MatrixXd Tc = MatrixXd(n_x_, n_radar_);
 
   // Get predicted value for Z
-  MatrixXd Zsig = SigmaPointsToRadarMeasurement(std::move(Xsig_pred));
+  MatrixXd Zsig = SigmaPointsToRadarMeasurement(Xsig_pred);
 //  cout << "ZIG" << endl;
 //  cout << Zsig << endl;
 
@@ -235,7 +244,7 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
     while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
 
     // State difference
-    VectorXd x_diff = Xsig_pred_.col(i) - x;
+    VectorXd x_diff = Xsig_pred.col(i) - x;
 
     // Angle normalization
     while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
@@ -246,8 +255,8 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
   //Kalman gain K;
   MatrixXd K = Tc * S.inverse();
-  cout << "Tc" << endl;
-  cout << Tc << endl;
+//  cout << "Tc" << endl;
+//  cout << Tc << endl;
 
   // Residual
   VectorXd z_diff = z - z_pred;
@@ -289,8 +298,8 @@ MatrixXd UKF::GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const do
 
   // Square root of P
   MatrixXd A = P_aug.llt().matrixL();
-  cout << "A" << endl;
-  cout << A << endl;
+//  cout << "A" << endl;
+//  cout << A << endl;
 
   // First column is the mean, so the same as x
   Xsig.col(0) = x_aug;
