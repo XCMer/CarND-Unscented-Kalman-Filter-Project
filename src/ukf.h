@@ -112,16 +112,17 @@ public:
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateRadar(MeasurementPackage meas_package);
+  State UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, MatrixXd Xsig_pred);
 
   MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, double std_a, double std_yawdd);
   MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
   State PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P);
-  MatrixXd SigmaPointsToRadarMeasurement();
+  MatrixXd SigmaPointsToRadarMeasurement(MatrixXd Xsig_pred);
 
   void TestGenerateSigmaPoints();
   void TestPredictSigmaPoints();
   void TestPredictMeanAndCovariance();
+  void TestPredictRadar();
 
   void CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted);
   void CompareVector(const VectorXd &expected, const VectorXd &predicted);
