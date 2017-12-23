@@ -27,11 +27,7 @@ UKF::UKF() {
   x_.fill(0.0);
 
   // initial covariance matrix
-  P_ = MatrixXd(n_x_, n_x_);
-  P_.fill(0.0);
-  for (int i = 0; i < n_x_; i++) {
-    P_(i, i) = 1;
-  }
+  P_ = MatrixXd::Identity(n_x_, n_x_);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 1;
@@ -59,12 +55,8 @@ UKF::UKF() {
   // Spreading parameter
   lambda_ = 3 - n_aug_;
 
-  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
-  Xsig_pred_.fill(0);
-
-  weights_ = VectorXd(2 * n_aug_ + 1);
-  weights_.fill(0);
-
+  Xsig_pred_ = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
+  weights_ = VectorXd::Zero(2 * n_aug_ + 1);
   is_initialized_ = false;
 
   // Test functions
@@ -193,15 +185,14 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 
   // Calculate cross correlation matrix (Tc)
   VectorXd z = meas_package.raw_measurements_;
-  MatrixXd Tc = MatrixXd(n_x_, n_radar_);
+  MatrixXd Tc = MatrixXd::Zero(n_x_, n_radar_);
 
   // Get predicted value for Z
   MatrixXd Zsig = SigmaPointsToRadarMeasurement(Xsig_pred);
 //  cout << "ZIG" << endl;
 //  cout << Zsig << endl;
 
-  VectorXd z_pred = VectorXd(n_radar_);
-  z_pred.fill(0.0);
+  VectorXd z_pred = VectorXd::Zero(n_radar_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     z_pred = z_pred + weights(i) * Zsig.col(i);
   }
@@ -209,8 +200,7 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 //  cout << z_pred << endl;
 
   // Measurement covariance (S)
-  MatrixXd S = MatrixXd(n_radar_, n_radar_);
-  S.fill(0.0);
+  MatrixXd S = MatrixXd::Zero(n_radar_, n_radar_);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
@@ -234,7 +224,6 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
 //  cout << S << endl;
 
   // For 2n+1 sigma points
-  Tc.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
     // Residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
@@ -282,19 +271,16 @@ State UKF::UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, 
  */
 MatrixXd UKF::GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const double std_a, const double std_yawdd) {
   // Augmentation
-  VectorXd x_aug = VectorXd(n_aug_);
+  VectorXd x_aug = VectorXd::Zero(n_aug_);
   x_aug.head(n_x_) = x;
-  x_aug(n_x_) = 0;
-  x_aug(n_x_ + 1) = 0;
 
-  MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
-  P_aug.fill(0.0);
+  MatrixXd P_aug = MatrixXd::Zero(n_aug_, n_aug_);
   P_aug.topLeftCorner(n_x_, n_x_) = P;
   P_aug(n_x_, n_x_) = std_a * std_a;
   P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd * std_yawdd;
 
   // Sigma-point matrix
-  MatrixXd Xsig = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  MatrixXd Xsig = MatrixXd::Zero(n_aug_, 2 * n_aug_ + 1);
 
   // Square root of P
   MatrixXd A = P_aug.llt().matrixL();
@@ -323,7 +309,7 @@ MatrixXd UKF::GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, const do
  * @return Predicted sigma point matrix
  */
 MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
-  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  MatrixXd Xsig_pred = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
 
   // Predict sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
@@ -416,7 +402,7 @@ State UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred, VectorXd x, MatrixXd P) 
 
 
 MatrixXd UKF::SigmaPointsToRadarMeasurement(MatrixXd Xsig_pred) {
-  MatrixXd Zsig = MatrixXd(n_radar_, 2 * n_aug_ + 1);
+  MatrixXd Zsig = MatrixXd::Zero(n_radar_, 2 * n_aug_ + 1);
 
   // 2n+1 simga points
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {
