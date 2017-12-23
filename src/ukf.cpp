@@ -29,7 +29,7 @@ UKF::UKF() {
   P_ = MatrixXd(n_x_, n_x_);
   P_.fill(0.0);
   for (int i = 0; i < n_x_; i++) {
-    P_(i) = 1;
+    P_(i, i) = 1;
   }
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
@@ -55,13 +55,6 @@ UKF::UKF() {
   std_radrd_ = 0.3;
   //DO NOT MODIFY measurement noise values above these are provided by the sensor manufacturer.
 
-  /**
-  TODO:
-
-  Complete the initialization. See ukf.h for other member properties.
-
-  Hint: one or more values initialized above might be wildly off...
-  */
   // Spreading parameter
   lambda_ = 3 - n_aug_;
 
@@ -81,36 +74,43 @@ UKF::~UKF() {}
  * either radar or laser.
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
   if (!is_initialized_) {
-    is_initialized_ = true;
-    last_timestamp_ = meas_package.timestamp_;
-
     if (meas_package.sensor_type_ == meas_package.LASER) {
-//      UpdateLidar(meas_package);
+      x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
+
+      // Duplicated because individual sensors can be turned off
+      is_initialized_ = true;
+      last_timestamp_ = meas_package.timestamp_;
     } else {
-      UpdateRadar(meas_package);
+      double r = meas_package.raw_measurements_[0];
+      double theta = meas_package.raw_measurements_[1];
+      x_ << (r * std::cos(theta)), (r * std::sin(theta)), 0, 0, 0;
+
+      // Duplicated because individual sensors can be turned off
+      is_initialized_ = true;
+      last_timestamp_ = meas_package.timestamp_;
     }
   } else {
-    double delta_t = meas_package.timestamp_ - last_timestamp_;
-    last_timestamp_ = meas_package.timestamp_;
-    Prediction(delta_t);
+    if ((meas_package.sensor_type_ == meas_package.LASER) && use_laser_) {
+      // Duplicated since a sensor can be turned off
+      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 10e6;
+      last_timestamp_ = meas_package.timestamp_;
 
-    if (meas_package.sensor_type_ == meas_package.LASER) {
-      if (use_laser_) {
-        UpdateLidar(meas_package);
-      }
-    } else {
-      if (use_radar_) {
-        UpdateRadar(meas_package);
-      }
+      Prediction(delta_t);
+      UpdateLidar(meas_package);
+
+    } else if ((meas_package.sensor_type_ == meas_package.RADAR) && use_radar_) {
+      // Duplicated since a sensor can be turned off
+      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 10e6;
+      last_timestamp_ = meas_package.timestamp_;
+
+      Prediction(delta_t);
+      UpdateRadar(meas_package);
     }
   }
+
+//  cout << x_ << endl;
+//  cout << P_ << endl;
 }
 
 /**
@@ -128,12 +128,18 @@ void UKF::Prediction(double delta_t) {
 
   // First, we generate the sigma points from the current state
   MatrixXd Xsig_aug = GenerateSigmaPoints();
+  cout << "Sigma points" << endl;
+  cout << Xsig_aug << endl;
 
   // Then, we get the predicted sigma points
   Xsig_pred_ = SigmaPointPrediction(Xsig_aug, delta_t);
+  cout << "Sigma points prediction" << endl;
+  cout << Xsig_pred_ << endl;
 
   // Finally, we update the state mean and covariance with the prediction
   // convert from sigma points back to state variable form
+  cout << x_ << endl;
+  cout << P_ << endl;
   PredictMeanAndCovariance(Xsig_pred_);
 }
 
@@ -206,15 +212,15 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
     // Angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+    while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
+    while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
 
     // State difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
 
     // Angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
+    while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
   }
@@ -226,7 +232,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   VectorXd z_diff = z - z_pred;
 
   // Angle normalization
-  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+  while (z_diff(1) > M_PI) z_diff(1) -= 2. * M_PI;
   while (z_diff(1) < -M_PI) z_diff(1) += 2. * M_PI;
 
   // Update state mean and covariance matrix
@@ -246,6 +252,7 @@ MatrixXd UKF::GenerateSigmaPoints() {
   x_aug(n_x_ + 1) = 0;
 
   MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
+  P_aug.fill(0.0);
   P_aug.topLeftCorner(n_x_, n_x_) = P_;
   P_aug(n_x_, n_x_) = std_a_ * std_a_;
   P_aug(n_x_ + 1, n_x_ + 1) = std_yawdd_ * std_yawdd_;
@@ -255,6 +262,8 @@ MatrixXd UKF::GenerateSigmaPoints() {
 
   // Square root of P
   MatrixXd A = P_aug.llt().matrixL();
+  cout << "A" << endl;
+  cout << A << endl;
 
   // First column is the mean, so the same as x
   Xsig.col(0) = x_aug;
@@ -337,11 +346,9 @@ MatrixXd UKF::SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t) {
  */
 void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
   // Calculate weights
-  double weight_0 = lambda_ / (lambda_ + n_aug_);
-  weights_(0) = weight_0;
+  weights_(0) = lambda_ / (lambda_ + n_aug_);
   for (int i = 1; i < 2 * n_aug_ + 1; i++) {  //2n+1 weights
-    double weight = 0.5 / (n_aug_ + lambda_);
-    weights_(i) = weight;
+    weights_(i) = 0.5 / (n_aug_ + lambda_);
   }
 
   // Predicted state mean from weights and predicted sigma points
@@ -356,6 +363,7 @@ void UKF::PredictMeanAndCovariance(MatrixXd Xsig_pred) {
     VectorXd x_diff = Xsig_pred.col(i) - x_;
 
     // Angle normalization
+    cout << "ANGLE " << x_diff(3) << endl;
     while (x_diff(3) > M_PI) x_diff(3) -= 2. * M_PI;
     while (x_diff(3) < -M_PI) x_diff(3) += 2. * M_PI;
 
@@ -382,7 +390,7 @@ MatrixXd UKF::SigmaPointsToRadarMeasurement() {
     Zsig(0, i) = sqrt(p_x * p_x + p_y * p_y); // r
     Zsig(1, i) = atan2(p_y, p_x); // phi
     Zsig(2, i) = (p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y); // r_dot
-
-    return Zsig;
   }
+
+  return Zsig;
 }
