@@ -77,7 +77,7 @@ public:
   int n_lidar_ = 2;
 
   //* Last timestamp
-  double last_timestamp_;
+  long last_timestamp_;
 
 
   /**
@@ -126,6 +126,7 @@ public:
   void TestGenerateSigmaPoints();
   void TestPredictSigmaPoints();
   void TestPredictMeanAndCovariance();
+  void TestPrediction();
   void TestPredictRadar();
 
   void CompareMatrix(const MatrixXd &expected, const MatrixXd &predicted);

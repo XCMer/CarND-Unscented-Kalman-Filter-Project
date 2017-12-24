@@ -17,7 +17,7 @@ UKF::UKF() {
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored
-  use_radar_ = false;
+  use_radar_ = true;
 
   // initial state vector
   n_x_ = 5;
@@ -70,6 +70,7 @@ UKF::UKF() {
   TestGenerateSigmaPoints();
   TestPredictSigmaPoints();
   TestPredictMeanAndCovariance();
+  TestPrediction();
   TestPredictRadar();
 }
 
@@ -82,7 +83,7 @@ UKF::~UKF() {}
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (!is_initialized_) {
     if ((meas_package.sensor_type_ == meas_package.LASER) && use_laser_) {
-      x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 10, 0, 0.5;
+      x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
       cout << x_;
 
       // Duplicated because individual sensors can be turned off
@@ -100,7 +101,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   } else {
     if ((meas_package.sensor_type_ == meas_package.LASER) && use_laser_) {
       // Duplicated since a sensor can be turned off
-      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 10e6;
+      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 1e6;
       last_timestamp_ = meas_package.timestamp_;
 
       Prediction(delta_t);
@@ -110,19 +111,19 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       cout << "LIDAR Predict P: " << endl;
       cout << P_ << endl;
 
-//      State state = UpdateLidar(meas_package, x_, P_, Xsig_pred_, weights_, std_laspx_, std_laspy_);
-//      x_ = state.x;
-//      P_ = state.P;
-//
-//      cout << "LIDAR Update x: " << endl;
-//      cout << x_ << endl;
-//
-//      cout << "LIDAR Update P: " << endl;
-//      cout << P_ << endl;
+      State state = UpdateLidar(meas_package, x_, P_, Xsig_pred_, weights_, std_laspx_, std_laspy_);
+      x_ = state.x;
+      P_ = state.P;
+
+      cout << "LIDAR Update x: " << endl;
+      cout << x_ << endl;
+
+      cout << "LIDAR Update P: " << endl;
+      cout << P_ << endl;
 
     } else if ((meas_package.sensor_type_ == meas_package.RADAR) && use_radar_) {
       // Duplicated since a sensor can be turned off
-      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 10e6;
+      double delta_t = (meas_package.timestamp_ - last_timestamp_) / 1e6;
       last_timestamp_ = meas_package.timestamp_;
 
       Prediction(delta_t);
@@ -132,15 +133,15 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       cout << "RADAR Predict P: " << endl;
       cout << P_ << endl;
 
-//      State state = UpdateRadar(meas_package, x_, P_, Xsig_pred_, weights_, std_radr_, std_radphi_, std_radrd_);
-//      x_ = state.x;
-//      P_ = state.P;
+      State state = UpdateRadar(meas_package, x_, P_, Xsig_pred_, weights_, std_radr_, std_radphi_, std_radrd_);
+      x_ = state.x;
+      P_ = state.P;
 
-//      cout << "RADAR Update x: " << endl;
-//      cout << x_ << endl;
-//
-//      cout << "RADAR Update P: " << endl;
-//      cout << P_ << endl;
+      cout << "RADAR Update x: " << endl;
+      cout << x_ << endl;
+
+      cout << "RADAR Update P: " << endl;
+      cout << P_ << endl;
     }
   }
 }
@@ -239,6 +240,8 @@ State UKF::UpdateLidar(MeasurementPackage meas_package, const VectorXd &x, const
   State state = State();
   state.x = x_updated;
   state.P = P_updated;
+
+  cout << "NIS= " << (z_diff.transpose() * S.inverse() * z_diff) << endl;
 
   return state;
 }
@@ -416,11 +419,11 @@ MatrixXd UKF::SigmaPointPrediction(const MatrixXd &Xsig_aug, double delta_t) {
     double yawd_p = yawd; // check
 
     // Add noise
-    px_p += 0.5 * nu_a * delta_t * delta_t * cos(yaw); // rectified
-    py_p += 0.5 * nu_a * delta_t * delta_t * sin(yaw); // rectified
+    px_p += 0.5 * nu_a * pow(delta_t, 2) * cos(yaw); // rectified
+    py_p += 0.5 * nu_a * pow(delta_t, 2) * sin(yaw); // rectified
     v_p += nu_a * delta_t; // rectified
 
-    yaw_p += 0.5 * nu_yawdd * delta_t * delta_t; // check
+    yaw_p += 0.5 * nu_yawdd * pow(delta_t, 2); // check
     yawd_p += nu_yawdd * delta_t; //check
 
     // Write predicted sigma point into right column
@@ -598,6 +601,43 @@ void UKF::TestPredictMeanAndCovariance() {
 
   cout << "TestPredictMeanAndCovariance P" << endl;
   CompareMatrix(P_expected, state_pred.P);
+}
+
+void UKF::TestPrediction() {
+  VectorXd x = VectorXd(n_x_);
+  x <<   5.7441,
+          1.3800,
+          2.2049,
+          0.5015,
+          0.3528;
+
+  // Example covariance
+  MatrixXd P = MatrixXd(n_x_, n_x_);
+  P <<     0.0043,   -0.0013,    0.0030,   -0.0022,   -0.0020,
+          -0.0013,    0.0077,    0.0011,    0.0071,    0.0060,
+          0.0030,    0.0011,    0.0054,    0.0007,    0.0008,
+          -0.0022,    0.0071,    0.0007,    0.0098,    0.0100,
+          -0.0020,    0.0060,    0.0008,    0.0100,    0.0123;
+
+  MatrixXd Xsig_aug = GenerateSigmaPoints(x, P, 0.2, 0.2);
+  MatrixXd Xsig_pred = SigmaPointPrediction(Xsig_aug, 0.1);
+  State state = PredictMeanAndCovariance(Xsig_pred);
+
+  VectorXd x_expected = VectorXd(n_x_);
+  x_expected << 5.93446, 1.49035, 2.20528, 0.536853, 0.353577;
+
+  MatrixXd P_expected = MatrixXd(n_x_, n_x_);
+  P_expected << 0.00543425, -0.0024053, 0.00341576, -0.00348196, -0.00299378,
+          -0.0024053, 0.010845, 0.0014923, 0.00980182, 0.00791091,
+          0.00341576, 0.0014923, 0.00580129, 0.000778632, 0.000792973,
+          -0.00348196, 0.00980182, 0.000778632, 0.0119238, 0.0112491,
+          -0.00299378, 0.00791091, 0.000792973, 0.0112491, 0.0126972;
+
+  cout << "TestPrediction x" << endl;
+  CompareVector(x_expected, state.x);
+
+  cout << "TestPrediction P" << endl;
+  CompareMatrix(P_expected, state.P);
 }
 
 void UKF::TestPredictRadar() {
