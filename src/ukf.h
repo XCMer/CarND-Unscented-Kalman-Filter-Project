@@ -107,21 +107,21 @@ public:
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
    */
-  State UpdateLidar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, MatrixXd Xsig_pred,
-                   VectorXd weights, double std_laspx, double std_laspy);
+  State UpdateLidar(MeasurementPackage meas_package, const VectorXd &x, const MatrixXd &P, const MatrixXd &Xsig_pred,
+                   const VectorXd &weights, double std_laspx, double std_laspy);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  State UpdateRadar(MeasurementPackage meas_package, VectorXd x, MatrixXd P, MatrixXd Xsig_pred,
-                    VectorXd weights, double std_radr, double std_radphi, double std_radrd);
+  State UpdateRadar(MeasurementPackage meas_package, const VectorXd &x, const MatrixXd &P, const MatrixXd &Xsig_pred,
+                    const VectorXd &weights, double std_radr, double std_radphi, double std_radrd);
 
   MatrixXd GenerateSigmaPoints(const VectorXd &x, const MatrixXd &P, double std_a, double std_yawdd);
-  MatrixXd SigmaPointPrediction(MatrixXd Xsig_aug, double delta_t);
-  State PredictMeanAndCovariance(MatrixXd Xsig_pred);
-  MatrixXd SigmaPointsToRadarMeasurement(MatrixXd Xsig_pred);
-  MatrixXd SigmaPointsToLidarMeasurement(MatrixXd Xsig_pred);
+  MatrixXd SigmaPointPrediction(const MatrixXd &Xsig_aug, double delta_t);
+  State PredictMeanAndCovariance(const MatrixXd &Xsig_pred);
+  MatrixXd SigmaPointsToRadarMeasurement(const MatrixXd &Xsig_pred);
+  MatrixXd SigmaPointsToLidarMeasurement(const MatrixXd &Xsig_pred);
 
   void TestGenerateSigmaPoints();
   void TestPredictSigmaPoints();
